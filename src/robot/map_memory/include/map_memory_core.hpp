@@ -20,7 +20,7 @@ class MapMemoryCore {
     void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
 
     // Map update logic
-    void updateMap(const rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr& map_pub);
+   void updateMap(const rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr& map_pub);
 
   private:
     rclcpp::Logger logger_;

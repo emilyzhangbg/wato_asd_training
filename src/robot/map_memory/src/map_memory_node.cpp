@@ -11,7 +11,14 @@ MapMemoryNode::MapMemoryNode() : Node("map_memory"), map_memory_(robot::MapMemor
   map_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/map", 10);
 
   // Initialize timer
-  timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&MappingNode::updateMap, this));
+  timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&MapMemoryNode::timerCallback, this));
+}
+
+void MapMemoryNode::timerCallback()
+{
+  // We simply call the core's updateMap function,
+  // passing the publisher we created.
+  map_memory_.updateMap(map_pub_);
 }
 
 int main(int argc, char ** argv)
