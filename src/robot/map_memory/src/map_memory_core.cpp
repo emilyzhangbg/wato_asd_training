@@ -33,6 +33,7 @@ void MapMemoryCore::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg) {
 // Timer-based map update
 void MapMemoryCore::updateMap(const rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr& map_pub) {
     if (should_update_map && costmap_updated) {
+        RCLCPP_INFO(this->logger_, "Will update global map");
         integrateCostmap();
         map_pub->publish(global_map);
         should_update_map = false;
@@ -69,10 +70,8 @@ void MapMemoryCore::integrateCostmap() {
       }
 
       // Real-world position in costmap’s frame
-      double local_x = latest_costmap.info.origin.position.x 
-                       + (j + 0.5) * latest_costmap.info.resolution;
-      double local_y = latest_costmap.info.origin.position.y 
-                       + (i + 0.5) * latest_costmap.info.resolution;
+      double local_x = latest_costmap.info.origin.position.x + (j + 0.5) * latest_costmap.info.resolution;
+      double local_y = latest_costmap.info.origin.position.y + (i + 0.5) * latest_costmap.info.resolution;
 
       // Convert that to global map coordinates
       double gx = (local_x - global_map.info.origin.position.x) / global_map.info.resolution;
@@ -95,6 +94,7 @@ void MapMemoryCore::integrateCostmap() {
       global_map.data[global_index] = latest_costmap.data[costmap_index];
     }
   }
+  RCLCPP_INFO(this->logger_, "Updated global map");
 }
 
 
