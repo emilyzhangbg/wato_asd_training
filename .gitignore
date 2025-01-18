@@ -3,3 +3,4 @@ __pycache__
 .vscode/
 log
 watod-config.local.sh
+watod-config.sh
