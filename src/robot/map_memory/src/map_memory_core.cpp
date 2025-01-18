@@ -52,33 +52,49 @@ void MapMemoryCore::integrateCostmap() {
         global_map.info.origin.position.y = -10.0;
         // Currently no rotation
         global_map.info.origin.orientation.w = 1.0; 
-
         // Initialize all cells to unknown (-1)
         global_map.data.resize(global_map.info.width * global_map.info.height, -1);
 
         return;  // Exit early since no costmap merging is needed yet
   }
-  for (int i = 0; i < global_map.info.height; ++i) {
-    for (int j = 0; j < global_map.info.width; ++j) {
-      int costmap_index = j * latest_costmap.info.width + i;
-      // Transformation of local coordinates to global coordinates
-      double local_x = latest_costmap.info.origin.position.x + i * latest_costmap.info.resolution;
-      double local_y = latest_costmap.info.origin.position.y + j * latest_costmap.info.resolution;
+  // 2. Merge the latest costmap cells into global_map
+  for (size_t i = 0; i < latest_costmap.info.height; ++i) {
+    for (size_t j = 0; j < latest_costmap.info.width; ++j) {
 
-      if (global_x < 0 || global_y < 0 || global_x >= global_map.info.width || global_y >= global_map.info.height) {
-        continue;  // Skip out-of-bounds cells
+      int costmap_index = static_cast<int>(i * latest_costmap.info.width + j);
+
+      // If unknown, skip
+      if (latest_costmap.data[costmap_index] == -1) {
+        continue;
+      }
+
+      // Real-world position in costmap’s frame
+      double local_x = latest_costmap.info.origin.position.x 
+                       + (j + 0.5) * latest_costmap.info.resolution;
+      double local_y = latest_costmap.info.origin.position.y 
+                       + (i + 0.5) * latest_costmap.info.resolution;
+
+      // Convert that to global map coordinates
+      double gx = (local_x - global_map.info.origin.position.x) / global_map.info.resolution;
+      double gy = (local_y - global_map.info.origin.position.y) / global_map.info.resolution;
+
+      int global_x = static_cast<int>(std::floor(gx));
+      int global_y = static_cast<int>(std::floor(gy));
+
+      // Bounds check
+      if (global_x < 0 || global_y < 0 ||
+          global_x >= static_cast<int>(global_map.info.width) ||
+          global_y >= static_cast<int>(global_map.info.height))
+      {
+        continue;
       }
 
       int global_index = global_y * global_map.info.width + global_x;
 
-      // Merge data: overwrite only if the costmap cell has known data
-      if (latest_costmap.data[costmap_index] != -1) {
-        global_map.data[global_index] = latest_costmap.data[costmap_index];
-      }
+      // Merge the cell
+      global_map.data[global_index] = latest_costmap.data[costmap_index];
     }
   }
-  
-
 }
 
 

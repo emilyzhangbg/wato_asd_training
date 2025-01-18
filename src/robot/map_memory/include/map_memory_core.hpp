@@ -6,6 +6,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include <cmath>
 #include <vector>
+#include <algorithm>
 
 namespace robot
 {
