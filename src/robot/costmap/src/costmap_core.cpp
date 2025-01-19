@@ -3,7 +3,7 @@
 namespace robot
 {
 
-CostmapCore::CostmapCore(const rclcpp::Logger& logger) : logger_(logger) {}
+CostmapCore::CostmapCore(const rclcpp::Logger& logger, rclcpp::Clock::SharedPtr clock) : logger_(logger), clock_(clock) {}
 
 void CostmapCore::publishCostmap(const sensor_msgs::msg::LaserScan::SharedPtr scan) {
   /*
@@ -30,6 +30,7 @@ void CostmapCore::publishCostmap(const sensor_msgs::msg::LaserScan::SharedPtr sc
   /* Set up OccupancyGrid */
   auto occgrid = nav_msgs::msg::OccupancyGrid();
   occgrid.data = grid;
+  occgrid.info.map_load_time = clock_->now();
   occgrid.info.resolution = 2 * scan->range_max / res;
   occgrid.info.width = res;
   occgrid.info.height = res;

@@ -15,7 +15,7 @@ namespace robot
 class CostmapCore {
   public:
     // Constructor, we pass in the node's RCLCPP logger to enable logging to terminal
-    explicit CostmapCore(const rclcpp::Logger& logger);
+    explicit CostmapCore(const rclcpp::Logger& logger, rclcpp::Clock::SharedPtr clock);
     void publishCostmap(const sensor_msgs::msg::LaserScan::SharedPtr laserscan);
     void inflate(std::vector<int8_t>& grid, int res, double radius);
     void set(std::vector<int8_t>& grid, int res, int y, int x, int8_t val);
@@ -24,6 +24,7 @@ class CostmapCore {
 
   private:
     rclcpp::Logger logger_;
+    rclcpp::Clock::SharedPtr clock_;
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr costmap_pub_;
     double robot_angle;
     double robot_angle_w;
