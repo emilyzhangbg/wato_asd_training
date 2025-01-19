@@ -32,7 +32,7 @@ class MapMemoryCore {
     double last_y = 0.0;
 
      // Minimum distance to trigger map updates
-    const double distance_threshold = 5.0; 
+    const double distance_threshold = 1.5; 
 
     bool costmap_updated = false;
     bool should_update_map = false;

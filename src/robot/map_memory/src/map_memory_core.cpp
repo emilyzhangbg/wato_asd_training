@@ -35,6 +35,8 @@ void MapMemoryCore::updateMap(const rclcpp::Publisher<nav_msgs::msg::OccupancyGr
     if (should_update_map && costmap_updated) {
         RCLCPP_INFO(this->logger_, "Will update global map");
         integrateCostmap();
+        global_map.header.stamp = rclcpp::Clock().now();
+        global_map.header.frame_id = "sim_world";
         map_pub->publish(global_map);
         should_update_map = false;
         costmap_updated = false;
@@ -45,12 +47,12 @@ void MapMemoryCore::integrateCostmap() {
   // Initial Integration of costmap into global map
   if (global_map.data.empty()) {
      // Set map metadata
-        global_map.info.resolution = latest_costmap.info.resolution;
-        global_map.info.width = 200;  
-        global_map.info.height = 200; 
+        global_map.info.resolution = 0.1;
+        global_map.info.width = 300;  
+        global_map.info.height = 300; 
         // Bottom-left corner in global frame
-        global_map.info.origin.position.x = -10.0; 
-        global_map.info.origin.position.y = -10.0;
+        global_map.info.origin.position.x = -15.0; 
+        global_map.info.origin.position.y = -15.0;
         // Currently no rotation
         global_map.info.origin.orientation.w = 1.0; 
         // Initialize all cells to unknown (-1)

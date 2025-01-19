@@ -29,7 +29,10 @@ void CostmapNode::publishCostmap(const sensor_msgs::msg::LaserScan::SharedPtr sc
       int grid_x = res / 2 + (range / scan->range_max) * -sin(angle) * (res / 2);
       int grid_y = res / 2 + (range / scan->range_max) * -cos(angle) * (res / 2);
 
-      grid[res * grid_y + grid_x] = 100;
+      // Bound-check to avoid array index errors
+      if (grid_x >= 0 && grid_x < res && grid_y >= 0 && grid_y < res) {
+        grid[res * grid_y + grid_x] = 100;
+      }
     }
   }
 
@@ -40,6 +43,13 @@ void CostmapNode::publishCostmap(const sensor_msgs::msg::LaserScan::SharedPtr sc
   occgrid.data = grid;
   occgrid.info.map_load_time = this->get_clock()->now();
   occgrid.info.resolution = 2 * scan->range_max / res;
+
+  // ADDED for testing purposes
+  // Time stamp can help with TF alignment
+  occgrid.header.stamp = this->get_clock()->now();
+  // Frame ID so visualization and other nodes know its coordinate frame
+  occgrid.header.frame_id = "sim_world";
+
   occgrid.info.width = res;
   occgrid.info.height = res;
   occgrid.info.origin.position.x = robot_x - scan->range_max;
