@@ -13,20 +13,25 @@ namespace robot
 {
 
 class ControlCore {
-  public:
+public:
     // Constructor, we pass in the node's RCLCPP logger to enable logging to terminal
     ControlCore(const rclcpp::Logger& logger);
 
-    void move(rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr twist_pub_);
+    void controlLoop(rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr twist_pub_);
     void setPath(nav_msgs::msg::Path::SharedPtr msg);
     void setOdom(nav_msgs::msg::Odometry::SharedPtr msg);
 
-  private:
+private:
+    std::optional<geometry_msgs::msg::PoseStamped> findLookaheadPoint();
+    geometry_msgs::msg::Twist computeVelocity(const geometry_msgs::msg::PoseStamped &target);
+    double computeDistance(const geometry_msgs::msg::Point &a, const geometry_msgs::msg::Point &b);
+    double extractYaw(const geometry_msgs::msg::Quaternion &quat);
+
     rclcpp::Logger logger_;
 
     nav_msgs::msg::Path::SharedPtr path_;
     nav_msgs::msg::Odometry::SharedPtr odom_;
-    
+
     double lookahead_dist_;
     double goal_tolerance_;
     double linear_speed_;
