@@ -8,6 +8,7 @@ ControlNode::ControlNode(): Node("control"), control_(robot::ControlCore(this->g
     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>("/odom/filtered", 10,
                             std::bind(&ControlNode::recvOdom, this, _1));
     twist_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+
     timer_ = this->create_wall_timer(std::chrono::milliseconds(100),
                             std::bind(&ControlNode::timerCallback, this));
 }

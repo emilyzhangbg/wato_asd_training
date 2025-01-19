@@ -17,7 +17,7 @@ PlannerNode::PlannerNode() : Node("planner"), planner_(robot::PlannerCore(this->
 
     // Timer
     timer_ = this->create_wall_timer(
-        std::chrono::milliseconds(5000), std::bind(&PlannerNode::timerCallback, this));
+        std::chrono::milliseconds(10000), std::bind(&PlannerNode::timerCallback, this));
 
     // Initialize current map to empty grid
     current_map_ = nav_msgs::msg::OccupancyGrid();

@@ -29,12 +29,13 @@ private:
 
     rclcpp::Logger logger_;
 
-    nav_msgs::msg::Path::SharedPtr path_;
-    nav_msgs::msg::Odometry::SharedPtr odom_;
+    nav_msgs::msg::Path path_;
+    geometry_msgs::msg::Pose robot_pose_;
 
     double lookahead_dist_;
     double goal_tolerance_;
     double linear_speed_;
+    double wheel_base_;
 };
 
 } 
