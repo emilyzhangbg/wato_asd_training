@@ -38,4 +38,4 @@ ACTIVE_MODULES="vis_tools gazebo robot"
 
 ## Platform in which to build the docker images with. 
 ## Either arm64 (apple silicon, raspberry pi) or amd64 (most computers)
-PLATFORM="arm64"
+PLATFORM="amd64"

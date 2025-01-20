@@ -57,6 +57,7 @@ void MapMemoryCore::integrateCostmap() {
         global_map.info.origin.orientation.w = 1.0; 
         // Initialize all cells to unknown (-1)
         global_map.data.resize(global_map.info.width * global_map.info.height, -1);
+        
 
         return;  // Exit early since no costmap merging is needed yet
   }
@@ -98,6 +99,8 @@ void MapMemoryCore::integrateCostmap() {
   }
   RCLCPP_INFO(this->logger_, "Updated global map");
 }
+
+
 
 
 }
