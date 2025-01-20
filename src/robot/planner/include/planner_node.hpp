@@ -48,7 +48,7 @@ class PlannerNode : public rclcpp::Node {
     void fillPath(nav_msgs::msg::Path& path, const std::vector<CellIndex> path_points);
     CellIndex toCellIndex(const geometry_msgs::msg::Point& p) const;
     geometry_msgs::msg::Point toCoordPoint(const CellIndex& p) const;
-    void threshold(Grid& map, float thresh = 40);
+    void threshold(Grid& map, float thresh = 5);
 };
 
 #endif 

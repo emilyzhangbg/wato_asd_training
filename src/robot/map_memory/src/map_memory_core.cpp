@@ -94,7 +94,12 @@ void MapMemoryCore::integrateCostmap() {
       int global_index = global_y * global_map.info.width + global_x;
 
       // Merge the cell
-      global_map.data[global_index] = latest_costmap.data[costmap_index];
+      if (latest_costmap.data[costmap_index] > 80 && global_map.data[global_index] < 20) {
+        global_map.data[global_index] = latest_costmap.data[costmap_index] * 0.8 + global_map.data[global_index] * 0.2;
+      }
+      else {
+        global_map.data[global_index] = latest_costmap.data[costmap_index] * 0.5 + global_map.data[global_index] * 0.5;
+      }
     }
   }
   RCLCPP_INFO(this->logger_, "Updated global map");

@@ -8,7 +8,7 @@ namespace robot
 
 ControlCore::ControlCore(const rclcpp::Logger& logger) : logger_(logger) {
     lookahead_dist_ = 1.1;
-    goal_tolerance_ = 0.5;
+    goal_tolerance_ = 1.0;
     linear_speed_ = 0.3;
     wheel_base_ = 1.0;
 }
