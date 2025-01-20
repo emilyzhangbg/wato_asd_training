@@ -1,127 +1,53 @@
 #include <chrono>
 #include <memory>
-#include <cmath>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <string>
+#include <algorithm>  // for std::fill
 
 #include "costmap_node.hpp"
 
-using std::placeholders::_1;
+const int GRIDSIZE = 300;
 
-static const double resolution     = 0.1;    // meters per cell
-static const int    map_width      = 300;    // covers 30 m in X
-static const int    map_height     = 300;    // covers 30 m in Y
-static const double map_origin_x   = -15.0;  // bottom-left corner in sim_world
-static const double map_origin_y   = -15.0;  // covers [-15..+15]
-static const double inflation_cells= 2.1;    // interpret as ~2 cells if you keep the same inflate logic
-// If you want 2.1 meters of inflation, call inflate(grid, map_width, 21) or similar.
-
-CostmapNode::CostmapNode() 
-: Node("costmap"), 
-  costmap_(robot::CostmapCore(this->get_logger())) 
+// Constructor
+CostmapNode::CostmapNode() : Node("costmap"), costmap_(robot::CostmapCore(this->get_logger()))
 {
-  // Publishers/Subscribers
-  string_pub_ = this->create_publisher<std_msgs::msg::String>("/test_topic", 10);
-
+  string_pub_ = this->create_publisher<std_msgs::msg::String>("/test_topic", 50);
   lidar_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-    "/lidar", 
-    10, 
-    std::bind(&CostmapNode::publishCostmap, this, _1)
-  );
-
-  odometry_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-    "/odom/filtered", 
-    10, 
-    std::bind(&CostmapNode::setPose, this, _1)
-  );
-
-  costmap_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/costmap", 10);
-  past_ = this->get_clock()->now();
+    "/lidar", 10, std::bind(&CostmapNode::lidar_sub, this, std::placeholders::_1));
+  odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+    "/odom/filtered", 10, std::bind(&CostmapNode::odom_sub, this, std::placeholders::_1));
+  grid_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/costmap", 10);
 }
 
-void CostmapNode::publishCostmap(const sensor_msgs::msg::LaserScan::SharedPtr scan) 
+// 1) Inflation with partial cost range [50..100]
+void CostmapNode::inflateObstacles(int grid[300][300], double inflationRadius, int maxCost)
 {
-  // Create a grid of fixed size map_width x map_height
-  // representing a 30x30 environment in "sim_world"
-  std::vector<int8_t> grid(map_width * map_height, 0);
+  // inflationRadius is in meters? Then each cell is 0.1m => 1 meter = 10 cells
+  // or if your code treats it differently, keep that logic.
+  int inflationCells = static_cast<int>(std::round(inflationRadius * 10));
 
-  // For each laser reading, transform from robot frame to global sim_world
-  for (size_t i = 0; i < scan->ranges.size(); i++) {
-    double range = scan->ranges[i];
-    if (range < scan->range_min || range > scan->range_max) {
-      continue;  // skip invalid ranges
-    }
+  for (int x = 0; x < GRIDSIZE; x++) {
+    for (int y = 0; y < GRIDSIZE; y++) {
+      if (grid[x][y] == 100) {
+        // For each cell in the inflation square
+        for (int dx = -inflationCells; dx <= inflationCells; dx++) {
+          for (int dy = -inflationCells; dy <= inflationCells; dy++) {
+            int nx = x + dx;
+            int ny = y + dy;
+            // Check bounds
+            if (nx >= 0 && nx < GRIDSIZE && ny >= 0 && ny < GRIDSIZE) {
+              double distance = std::sqrt(dx * dx + dy * dy) / 10.0; // each cell=0.1m
 
-    // Laser angle in the robot's local frame
-    double angle_local = scan->angle_min + i * scan->angle_increment;
+              if (distance > inflationRadius) {
+                continue;  // beyond inflation range
+              }
+              // cost in range [50..100], near obstacle => 100, outer => ~50
+              double partial_cost = 50.0 + 50.0 * (1.0 - (distance / inflationRadius));
+              if (partial_cost < 50.0) partial_cost = 50.0;
+              if (partial_cost > 100.0) partial_cost = 100.0;
 
-    // Convert LaserScan to local coordinates
-    double x_local = range * std::cos(angle_local);
-    double y_local = range * std::sin(angle_local);
-
-    // Transform local -> global (sim_world) using the robot pose
-    // robot_angle, robot_x, robot_y are updated in setPose()
-    double x_world = robot_x + ( x_local * std::cos(robot_angle)
-                               - y_local * std::sin(robot_angle));
-    double y_world = robot_y + ( x_local * std::sin(robot_angle)
-                               + y_local * std::cos(robot_angle));
-
-    // Convert global coords -> grid cells
-    int gx = static_cast<int>((x_world - map_origin_x) / resolution);
-    int gy = static_cast<int>((y_world - map_origin_y) / resolution);
-
-    // Bound-check
-    if (gx >= 0 && gx < map_width && gy >= 0 && gy < map_height) {
-      grid[gy * map_width + gx] = 100;  // Mark as obstacle
-    }
-  }
-
-  // Inflate obstacles (currently we treat 'inflation_cells' as # of cells)
-  inflate(grid, map_width, inflation_cells);
-
-  // Build the OccupancyGrid message
-  nav_msgs::msg::OccupancyGrid occgrid;
-  occgrid.header.stamp = this->get_clock()->now();
-  occgrid.header.frame_id = "sim_world";  // global, non-moving frame
-
-  occgrid.info.map_load_time = this->get_clock()->now();
-  occgrid.info.resolution = resolution; // 0.1 m/cell
-  occgrid.info.width = map_width;
-  occgrid.info.height = map_height;
-
-  // The map covers [-15..+15] in X and Y
-  occgrid.info.origin.position.x = map_origin_x;
-  occgrid.info.origin.position.y = map_origin_y;
-  occgrid.info.origin.orientation.w = 1.0;
-
-  // Assign the data
-  occgrid.data = grid;
-
-  // Publish the costmap
-  costmap_pub_->publish(occgrid);
-}
-
-void CostmapNode::inflate(std::vector<int8_t>& grid, int res, double radius) 
-{
-  int intrad = static_cast<int>(std::ceil(radius));
-
-  for (int y = 0; y < res; y++) {
-    for (int x = 0; x < res; x++) {
-      if (grid[y * res + x] == 100) {
-        // For each cell within the inflation radius
-        for (int dy = -intrad; dy <= intrad; dy++) {
-          for (int dx = -intrad; dx <= intrad; dx++) {
-            double dist = std::sqrt(static_cast<double>(dy*dy + dx*dx));
-            if (dist < radius) {
-              int8_t curcost = get(grid, res, y + dy, x + dx);
-              // cost formula: cost = 100 * (1 - dist/radius)
-              double newcost_d = 100.0 * (1.0 - (dist / radius));
-              if (newcost_d < 0.0) newcost_d = 0.0;
-              if (newcost_d > 100.0) newcost_d = 100.0;
-              int8_t newcost = static_cast<int8_t>(std::round(newcost_d));
-
-              if (newcost > curcost) {
-                set(grid, res, y + dy, x + dx, newcost);
+              int cost = static_cast<int>(std::round(partial_cost));
+              if (cost > grid[nx][ny]) {
+                grid[nx][ny] = cost;
               }
             }
           }
@@ -131,47 +57,87 @@ void CostmapNode::inflate(std::vector<int8_t>& grid, int res, double radius)
   }
 }
 
-void CostmapNode::set(std::vector<int8_t>& grid, int res, int y, int x, int8_t val) 
+void CostmapNode::odom_sub(const nav_msgs::msg::Odometry::SharedPtr odom)
 {
-  // Bounds check
-  if (y >= 0 && y < res && x >= 0 && x < res) {
-    grid[y * res + x] = val;
+  float float_x = odom->pose.pose.position.x;
+  float float_y = odom->pose.pose.position.y;
+
+  // Convert orientation to yaw
+  double x = odom->pose.pose.orientation.x;
+  double y = odom->pose.pose.orientation.y;
+  double z = odom->pose.pose.orientation.z;
+  double w = odom->pose.pose.orientation.w;
+
+  double yaw = std::atan2(2.0*(w*z + x*y), 1.0 - 2.0*(y*y+z*z));
+
+  // We store robot coords in "tenths of meter" + offset => see below in lidar_sub
+  this->x_ = float_x * 10;
+  this->y_ = float_y * 10;
+  this->dir_x_ = std::cos(yaw);
+  this->dir_y_ = std::sin(yaw);
+  this->dir_ = std::atan2(this->dir_y_, this->dir_x_);
+}
+
+void CostmapNode::lidar_sub(const sensor_msgs::msg::LaserScan::SharedPtr scan)
+{
+  // If we haven't set a valid pose yet, skip
+  if (this->x_ < 0 && this->dir_x_ < -99) {
+    return;
   }
-}
 
-int8_t CostmapNode::get(const std::vector<int8_t>& grid, int res, int y, int x) 
-{
-  if (y >= 0 && y < res && x >= 0 && x < res) {
-    return grid[y * res + x];
+  // The array
+  // 2) Mark unobserved as -1
+  int array[GRIDSIZE][GRIDSIZE];
+  std::fill(&array[0][0], &array[0][0] + GRIDSIZE*GRIDSIZE, -1);
+
+  // Robot yaw
+  float angle = std::atan2(this->dir_y_, this->dir_x_);
+
+  // Step 2: Convert LaserScan => obstacles
+  for (size_t i = 0; i < scan->ranges.size(); ++i) {
+    double laser_angle = angle + scan->angle_min + i * scan->angle_increment;
+    double range = scan->ranges[i];
+    if (range < scan->range_max && range > scan->range_min) {
+      // Convert to "grid" coords
+      int x_grid = static_cast<int>(range*std::cos(laser_angle)*10 + this->x_) + 150;
+      int y_grid = static_cast<int>(range*std::sin(laser_angle)*10 + this->y_) + 150;
+
+      if (x_grid < GRIDSIZE && x_grid >= 0 && y_grid < GRIDSIZE && y_grid >= 0) {
+        array[x_grid][y_grid] = 100;  // obstacle
+      }
+    }
   }
-  return 100; // default obstacle if out-of-bounds
+
+  // Step 3: Inflate
+  inflateObstacles(array, 1.6, 100);
+
+  // Step 4: Publish costmap
+  nav_msgs::msg::OccupancyGrid msg;
+  // 4a) Use "sim_world" for consistency with your environment
+  msg.header.frame_id = "sim_world";  
+  // We can reuse LaserScan's timestamp or use now()
+  // msg.header.stamp = scan->header.stamp;
+  msg.header.stamp = this->now();
+
+  msg.info.width  = GRIDSIZE;
+  msg.info.height = GRIDSIZE;
+  msg.info.resolution = 0.1;
+  // Place bottom-left corner at (-15,-15)
+  msg.info.origin.position.x = -15.0;
+  msg.info.origin.position.y = -15.0;
+  msg.info.origin.orientation.w = 1.0;
+
+  msg.data.resize(GRIDSIZE * GRIDSIZE);
+  // Flatten
+  for (int x = 0; x < GRIDSIZE; ++x) {
+    for (int y = 0; y < GRIDSIZE; ++y) {
+      msg.data[y*GRIDSIZE + x] = array[x][y];
+    }
+  }
+
+  grid_pub_->publish(msg);
 }
 
-void CostmapNode::setPose(const nav_msgs::msg::Odometry::SharedPtr odom) 
-{
-  tf2::Quaternion quat_tf;
-  tf2::fromMsg(odom->pose.pose.orientation, quat_tf);
-  double roll{}, pitch{}, yaw{};
-  tf2::Matrix3x3 m(quat_tf);
-  m.getRPY(roll, pitch, yaw);
-
-  // Save the robot's global pose (sim_world coords)
-  robot_angle = yaw;
-  robot_x = odom->pose.pose.position.x;
-  robot_y = odom->pose.pose.position.y;
-  robot_z = odom->pose.pose.position.z;
-}
-
-// Optional string-based debug printing
-void CostmapNode::print(std::string s) 
-{
-  auto message = std_msgs::msg::String();
-  message.data = s;
-  RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
-  string_pub_->publish(message);
-}
-
-// Standard main for this node
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
