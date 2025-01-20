@@ -1,6 +1,6 @@
 #include "map_memory_node.hpp"
 
-MapMemoryNode::MapMemoryNode() : Node("map_memory"), map_memory_((this->get_logger())) {
+MapMemoryNode::MapMemoryNode() : Node("map_memory"), map_memory_(this->get_logger()) {
   // subscriber initialization
   costmap_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>("/costmap", 10, 
     std::bind(&robot::MapMemoryCore::costmapCallback, &map_memory_, std::placeholders::_1));
