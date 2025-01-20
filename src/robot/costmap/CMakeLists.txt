@@ -24,7 +24,7 @@ find_package(tf2_geometry_msgs REQUIRED)
 # We build a library so that the methods defined can be used by
 # both the unit test and ROS2 node executables.
 add_library(costmap_lib
-  src/costmap_core.cpp)
+  src/costmap_node.cpp)
 # Indicate to compiler where to search for header files
 target_include_directories(costmap_lib
   PUBLIC include)

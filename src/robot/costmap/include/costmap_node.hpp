@@ -7,7 +7,6 @@
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
-#include "costmap_core.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 class CostmapNode : public rclcpp::Node {
@@ -37,9 +36,6 @@ private:
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr string_pub_;
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr grid_pub_;
-
-  // From your costmap_core, if you still use it
-  robot::CostmapCore costmap_;
 };
 
 #endif  // COSTMAP_NODE_HPP_

@@ -8,7 +8,7 @@
 const int GRIDSIZE = 300;
 
 // Constructor
-CostmapNode::CostmapNode() : Node("costmap"), costmap_(robot::CostmapCore(this->get_logger()))
+CostmapNode::CostmapNode() : Node("costmap")
 {
   string_pub_ = this->create_publisher<std_msgs::msg::String>("/test_topic", 50);
   lidar_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
