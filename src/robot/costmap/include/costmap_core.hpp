@@ -8,6 +8,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/pose_with_covariance.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "std_msgs/msg/string.hpp"
 
 namespace robot
 {

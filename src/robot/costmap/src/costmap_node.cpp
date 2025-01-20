@@ -18,7 +18,7 @@ static const double inflation_cells= 2.1;    // interpret as ~2 cells if you kee
 
 CostmapNode::CostmapNode() 
 : Node("costmap"), 
-  costmap_(robot::CostmapCore(this->get_logger())) 
+  costmap_(robot::CostmapCore(this->get_logger(), this->get_clock())) 
 {
   // Publishers/Subscribers
   string_pub_ = this->create_publisher<std_msgs::msg::String>("/test_topic", 10);
